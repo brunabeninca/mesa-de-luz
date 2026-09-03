@@ -1,0 +1,837 @@
+<title>Mesa de Luz</title>
+<style>
+  /* Mesa de Luz commits deliberately to one world — a lightbox tray in a dim
+     room — so the palette is fixed rather than swapped per viewer theme. */
+  :root{
+    --tray:#1c1a17;
+    --tray-rail:#242019;
+    --mount:#332e26;
+    --mount-line:#4a4436;
+    --paper:#f3ede1;
+    --ink:#1c1a17;
+    --amber:#e8a33d;
+    --amber-dim:#a97a2e;
+    --cap:#c9c0ac;
+    --cap-dim:#7d7565;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--tray);
+    color:var(--cap);
+    font-family:'IBM Plex Mono', ui-monospace, monospace;
+    -webkit-font-smoothing:antialiased;
+  }
+  ::selection{background:var(--amber);color:#1c1a17;}
+
+  .rail{
+    background:
+      repeating-linear-gradient(90deg, var(--tray-rail) 0 2px, transparent 2px 48px);
+    border-bottom:1px solid var(--mount-line);
+    border-top:1px solid var(--mount-line);
+    padding:14px 6vw;
+  }
+  header.rail{display:flex;align-items:baseline;justify-content:space-between;gap:24px;flex-wrap:wrap;}
+  .brand{display:flex;align-items:baseline;gap:14px;}
+  .brand .mark{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:600;font-style:italic;
+    font-size:22px;color:var(--paper);
+    letter-spacing:.01em;
+  }
+  .brand .tagline{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--cap-dim);}
+  .count{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--amber);}
+
+  main{padding:56px 6vw 100px;max-width:1400px;margin:0 auto;}
+
+  .intro{max-width:640px;margin:0 0 64px;}
+  .intro h1{
+    font-family:'Fraunces', Georgia, serif;
+    font-weight:500;
+    font-size:clamp(28px,4vw,40px);
+    line-height:1.15;
+    color:var(--paper,var(--ink));
+    margin:0 0 16px;
+    text-wrap:balance;
+  }
+  .intro p{font-size:13.5px;line-height:1.7;color:var(--cap);margin:0 0 10px;}
+  .intro p.dim{color:var(--cap-dim);font-size:12px;}
+
+  .group{margin-bottom:72px;}
+  .group-head{
+    display:flex;align-items:baseline;gap:16px;margin-bottom:22px;
+    border-bottom:1px solid var(--mount-line);padding-bottom:10px;
+  }
+  .group-head .idx{font-size:11px;color:var(--amber-dim);}
+  .group-head h2{
+    font-family:'Fraunces', Georgia, serif;font-style:italic;font-weight:500;
+    font-size:19px;color:var(--paper);margin:0;flex:1;
+  }
+  .group-head .note{font-size:11px;color:var(--cap-dim);text-align:right;max-width:280px;}
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(300px,1fr));
+    gap:28px;
+  }
+  .grid.wide{grid-template-columns:repeat(auto-fit, minmax(420px,1fr));}
+
+  .mount{
+    background:var(--mount);
+    border:1px solid var(--mount-line);
+    padding:14px;
+    transition:transform .15s ease, border-color .15s ease;
+  }
+  .mount:hover{transform:translateY(-2px);border-color:var(--amber-dim);}
+  .frame{
+    position:relative;
+    aspect-ratio:16/9;
+    overflow:hidden;
+    isolation:isolate;
+  }
+  .cap{
+    display:flex;justify-content:space-between;align-items:baseline;
+    margin-top:10px;font-size:10.5px;letter-spacing:.04em;
+  }
+  .cap .ref{color:var(--amber);}
+  .cap .src{color:var(--cap-dim);text-transform:uppercase;}
+
+  /* ===== slide content styles ===== */
+  .slide{position:absolute;inset:0;font-family:'Inter',sans-serif;}
+
+  /* Template A: word + illustration on black */
+  .tA{background:#0d0d0d;display:flex;align-items:center;padding:6% 5%;gap:4%;}
+  .tA .txt{flex:1;}
+  .tA .word{font-family:'Fraunces',serif;font-weight:600;color:#fff;font-size:clamp(20px,5.2vw,44px);line-height:1;text-wrap:balance;}
+  .tA .sub{color:#9a9a9a;font-size:clamp(7px,1.1vw,11px);margin-top:8px;max-width:70%;line-height:1.4;}
+  .tA .illus{width:38%;aspect-ratio:1;position:relative;}
+  .tA .illus svg{width:100%;height:100%;}
+
+  /* Split vertical panel */
+  .split{display:flex;height:100%;}
+  .split .half{flex:1;display:flex;flex-direction:column;justify-content:center;padding:7%;}
+
+  /* Diagonal split */
+  .diag{position:relative;height:100%;background:#fff;overflow:hidden;}
+  .diag .right{position:absolute;inset:0;left:38%;background:#e8792a;clip-path:polygon(22% 0,100% 0,100% 100%,0 100%);display:flex;align-items:center;padding:0 8% 0 16%;}
+  .diag .left{position:absolute;left:0;top:0;bottom:0;width:48%;display:flex;align-items:center;padding-left:8%;}
+
+  /* Quote card */
+  .quote{background:#fff;height:100%;position:relative;padding:8% 6%;}
+  .quote .who{position:absolute;top:6%;right:5%;display:flex;flex-direction:column;align-items:center;gap:4px;}
+  .quote .avatar{width:clamp(22px,7vw,58px);height:clamp(22px,7vw,58px);border-radius:50%;background:#d8933a;border:2px solid #1c1a17;}
+  .quote .who span{font-size:clamp(5px,.85vw,9px);color:#1c1a17;font-weight:700;}
+  .quote .txt{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(13px,3vw,26px);line-height:1.12;color:#c4401f;max-width:76%;text-transform:uppercase;text-wrap:balance;}
+
+  /* Insany cover */
+  .insany{background:#20241f;height:100%;padding:6% 6%;display:flex;flex-direction:column;color:#f3ede1;position:relative;}
+  .insany .top{display:flex;justify-content:space-between;align-items:center;font-size:clamp(6px,1vw,10px);letter-spacing:.08em;}
+  .insany .logo{display:flex;align-items:center;gap:5px;font-weight:700;}
+  .insany .logo svg{width:clamp(8px,1.6vw,16px);height:clamp(8px,1.6vw,16px);}
+  .insany .ring{position:absolute;right:14%;top:20%;width:clamp(40px,14vw,120px);height:clamp(40px,14vw,120px);border:1.5px dashed #4fd1a5;border-radius:50%;display:flex;align-items:center;justify-content:center;}
+  .insany .ring .core{width:62%;height:62%;border:2px solid #4fd1a5;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#4fd1a5;font-family:'Fraunces',serif;font-weight:700;font-size:clamp(10px,3vw,26px);}
+  .insany .title{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(20px,5.6vw,46px);line-height:.98;margin-top:auto;text-wrap:balance;}
+  .insany .subtitle{color:#4fd1a5;font-size:clamp(6px,1.1vw,11px);margin-top:6px;letter-spacing:.03em;}
+  .insany .meta{display:grid;grid-template-columns:1fr 1fr;gap:2% 8%;margin-top:5%;padding-top:4%;border-top:1px dotted #4a4436;font-size:clamp(5px,.85vw,9px);}
+  .insany .meta b{display:block;color:#8f8a7d;font-weight:400;text-transform:uppercase;letter-spacing:.06em;font-size:.85em;}
+  .insany .meta span{color:#f3ede1;font-weight:600;}
+
+  /* Photo grid + heading */
+  .pgrid{display:flex;height:100%;background:#f4f1ea;}
+  .pgrid .photos{flex:1.5;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:2%;padding:4%;}
+  .pgrid .photos div{background:linear-gradient(135deg,#c9c0ac,#8f8a7d);}
+  .pgrid .info{flex:1;padding:6% 5%;display:flex;flex-direction:column;justify-content:center;}
+  .pgrid .info h3{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(14px,3vw,26px);margin:0 0 8px;color:#1c1a17;}
+  .pgrid .info p{font-size:clamp(6px,1vw,10px);color:#5c5748;line-height:1.5;margin:0;}
+
+  /* Pricing table */
+  .price{background:#f6f3ea;height:100%;padding:6% 8%;display:flex;justify-content:space-between;}
+  .price .col{font-size:clamp(5px,.8vw,8.5px);color:#3a362a;display:flex;flex-direction:column;justify-content:center;gap:10%;text-align:right;}
+  .price .col.right{text-align:left;}
+  .price .rows{flex:1.4;display:flex;flex-direction:column;justify-content:center;gap:5%;padding:0 4%;}
+  .price .row{font-size:clamp(6px,1vw,11px);color:#3a362a;font-variant-numeric:tabular-nums;}
+  .price .row.hi{background:linear-gradient(90deg,#c9184a,#e05a7a);color:#fff;font-weight:700;padding:2% 6%;border-radius:2px;}
+
+  /* CTA */
+  .cta{background:linear-gradient(160deg,#cfe4ee,#a9cfe0);height:100%;display:flex;flex-direction:column;justify-content:center;padding:8% 8%;}
+  .cta h3{font-family:'Fraunces',serif;font-weight:700;font-style:italic;color:#c9184a;font-size:clamp(16px,4vw,32px);margin:0 0 4%;}
+  .cta .em{font-size:clamp(6px,1.1vw,11px);color:#2c4a57;font-variant-numeric:tabular-nums;margin-bottom:2%;}
+
+  /* Org chart */
+  .org{background:#161613;height:100%;position:relative;}
+  .org .node{position:absolute;display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .org .node .ph{width:clamp(16px,5vw,42px);height:clamp(16px,5vw,42px);border-radius:8px;background:#3a3730;border:1px solid #55503f;}
+  .org .node b{color:#4fd1a5;font-size:clamp(5px,.85vw,9px);font-weight:600;}
+  .org .node span{color:#8f8a7d;font-size:clamp(4px,.7vw,7.5px);}
+
+  /* Event stage */
+  .stage{position:relative;height:100%;background:#241028;overflow:hidden;}
+  .stage .tri{position:absolute;inset:0;}
+  .stage .content{position:absolute;inset:0;padding:6%;display:flex;flex-direction:column;justify-content:flex-end;color:#fff;}
+  .stage .tag{display:flex;gap:6px;font-size:clamp(5px,.85vw,9px);margin-bottom:2%;flex-wrap:wrap;}
+  .stage .tag span{background:rgba(0,0,0,.35);padding:2px 6px;border-radius:2px;}
+  .stage h3{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(11px,2.2vw,19px);margin:0 0 3%;line-height:1.2;text-wrap:balance;}
+  .stage .speakers{display:flex;gap:6%;margin-top:2%;}
+  .stage .sp{display:flex;flex-direction:column;align-items:center;gap:3px;}
+  .stage .sp .ph{width:clamp(16px,4.5vw,38px);height:clamp(16px,4.5vw,38px);border-radius:50%;background:#f3ede1;}
+  .stage .sp span{font-size:clamp(4px,.7vw,7.5px);}
+
+  /* Dashboard */
+  .dash{background:#f4f1ea;height:100%;display:flex;padding:5%;gap:4%;}
+  .dash .left{flex:1;display:flex;flex-direction:column;justify-content:center;}
+  .dash .left .lbl{font-size:clamp(5px,.85vw,9px);color:#7d7565;text-transform:uppercase;letter-spacing:.06em;}
+  .dash .left p{font-size:clamp(8px,1.6vw,15px);color:#1c1a17;line-height:1.35;margin:4px 0 0;}
+  .dash .left p b{color:#c4401f;}
+  .dash .right{flex:1.3;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:5%;}
+  .dash .card{background:#fff;border:1px solid #e3ddcc;border-radius:3px;padding:6%;display:flex;flex-direction:column;justify-content:space-between;}
+  .dash .card .t{font-size:clamp(3.5px,.6vw,6.5px);color:#9a9484;text-transform:uppercase;}
+  .dash .card svg{width:100%;height:55%;}
+
+  /* Yellow quote card */
+  .ycard{background:#171512;height:100%;display:flex;align-items:center;justify-content:center;padding:6%;}
+  .ycard .inner{background:#f6d13a;width:100%;height:100%;padding:6% 6%;display:flex;flex-direction:column;justify-content:flex-end;position:relative;}
+  .ycard .badges{position:absolute;top:6%;left:6%;display:flex;gap:3%;flex-wrap:wrap;}
+  .ycard .badges span{background:#171512;color:#f6d13a;font-size:clamp(4px,.7vw,7.5px);padding:2% 4%;border-radius:20px;font-weight:700;}
+  .ycard .line{font-family:'Fraunces',serif;font-weight:800;font-style:italic;color:#171512;font-size:clamp(11px,2.6vw,22px);line-height:1.15;text-wrap:balance;}
+
+  /* Lilac "+" composite title */
+  .plus{background:#e9e6f5;height:100%;position:relative;overflow:hidden;display:flex;align-items:center;padding:6% 8%;}
+  .plus .stripes{position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 5%,rgba(30,26,74,.08) 5% 5.6%);}
+  .plus .body{position:relative;flex:1;}
+  .plus h3{font-family:'Fraunces',serif;font-weight:700;color:#1e1a4a;font-size:clamp(13px,3vw,26px);line-height:1.1;margin:0;}
+  .plus h3 b{color:#d0335a;}
+  .plus .sub{font-size:clamp(6px,1vw,10px);color:#5a5590;margin-top:3%;font-style:italic;}
+  .plus .list{position:relative;flex:1;display:flex;flex-direction:column;gap:8%;padding-left:6%;}
+  .plus .list div{font-size:clamp(6px,1.05vw,10.5px);color:#302a6a;}
+
+  /* Minimal single statement */
+  .stmt{background:#fff;height:100%;display:flex;align-items:center;padding:8% 10%;}
+  .stmt p{font-size:clamp(9px,2vw,18px);color:#1c1a17;line-height:1.4;margin:0;max-width:72%;text-wrap:balance;}
+
+  /* Title + doc mockup */
+  .docmock{background:#fff;height:100%;display:flex;align-items:center;padding:6% 6%;gap:5%;}
+  .docmock .txt{flex:1;}
+  .docmock .txt h3{font-family:'Fraunces',serif;font-weight:600;color:#1c1a17;font-size:clamp(11px,2.4vw,20px);line-height:1.2;margin:0 0 6%;}
+  .docmock .txt p{font-size:clamp(5.5px,.95vw,9.5px);color:#6b6656;line-height:1.55;margin:0;}
+  .docmock .win{flex:1.3;background:#f6f3ea;border:1px solid #e3ddcc;border-radius:3px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.08);}
+  .docmock .win .bar{background:#2a2a2a;height:14%;display:flex;align-items:center;gap:3%;padding:0 4%;}
+  .docmock .win .bar span{width:5px;height:5px;border-radius:50%;background:#5a5a5a;}
+  .docmock .win .body{padding:8%;display:flex;gap:6%;}
+  .docmock .win .toc{flex:.6;display:flex;flex-direction:column;gap:14%;}
+  .docmock .win .toc div{height:3px;background:#d8cdb0;border-radius:1px;}
+  .docmock .win .lines{flex:1.6;display:flex;flex-direction:column;gap:14%;}
+  .docmock .win .lines div{height:3px;background:#c9c0ac;border-radius:1px;}
+  .docmock .win .lines div:nth-child(3n){width:70%;}
+
+  /* Blue quote with bubble */
+  .bquote{background:#1f7bd1;height:100%;display:flex;flex-direction:column;}
+  .bquote .top{flex:1.5;display:flex;align-items:center;padding:6% 10%;}
+  .bquote .top p{color:#fff;font-size:clamp(9px,1.9vw,17px);line-height:1.35;margin:0;text-wrap:balance;}
+  .bquote .bot{flex:1;background:#fff;position:relative;display:flex;align-items:center;justify-content:center;}
+  .bquote .bot::before{content:'';position:absolute;top:-9%;left:50%;transform:translateX(-50%);width:0;height:0;border-left:3.2% solid transparent;border-right:3.2% solid transparent;border-bottom:9% solid #fff;}
+  .bquote .bot span{color:#1c1a17;font-weight:700;font-size:clamp(6px,1.1vw,11px);}
+
+  /* Photo + overlaid quote card + tabs */
+  .photoquote{height:100%;position:relative;background:#8a6a4a;overflow:hidden;}
+  .photoquote .tabs{position:absolute;top:0;left:0;right:0;background:#fff;display:flex;gap:6%;padding:3% 6%;font-size:clamp(5px,.85vw,9px);color:#9a9484;z-index:2;}
+  .photoquote .tabs span.on{color:#c4401f;font-weight:700;}
+  .photoquote .photo{position:absolute;inset:0;top:16%;background:linear-gradient(160deg,#c96a3a,#7a4a2a);}
+  .photoquote .card{position:absolute;right:5%;bottom:6%;left:38%;background:#fff;padding:5% 6%;border-top:2px solid #c4401f;}
+  .photoquote .card p{margin:0;font-size:clamp(5px,.85vw,8.5px);color:#1c1a17;line-height:1.4;}
+  .photoquote .card b{display:block;margin-top:4%;font-size:clamp(4.5px,.75vw,7.5px);color:#7d7565;}
+
+  /* Photo + CTA card (institutional site) */
+  .photocta{height:100%;position:relative;background:linear-gradient(160deg,#4a4056,#2a2432);overflow:hidden;}
+  .photocta .card{position:absolute;left:5%;top:12%;bottom:12%;width:38%;background:#fff;padding:6%;display:flex;flex-direction:column;justify-content:center;}
+  .photocta .card p{font-size:clamp(6px,1.15vw,11.5px);color:#1c1a17;line-height:1.3;margin:0 0 6%;font-weight:600;}
+  .photocta .card small{font-size:clamp(5px,.85vw,8.5px);color:#6b6656;line-height:1.5;display:block;margin-bottom:8%;}
+  .photocta .card button{background:#e0335a;color:#fff;border:0;font-size:clamp(4.5px,.8vw,8px);padding:6% 8%;border-radius:2px;width:fit-content;}
+
+  /* Stats around phone mockup */
+  .statmock{background:#f4f1ea;height:100%;display:flex;align-items:center;justify-content:center;position:relative;padding:6%;}
+  .statmock .phone{width:22%;aspect-ratio:9/16;background:linear-gradient(160deg,#f6d13a,#e8a33d);border-radius:8%;border:3px solid #1c1a17;}
+  .statmock .stat{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .statmock .stat b{font-family:'Fraunces',serif;color:#c4401f;font-size:clamp(9px,1.8vw,16px);}
+  .statmock .stat span{font-size:clamp(4px,.65vw,6.5px);color:#7d7565;text-align:center;}
+
+  /* Big number + phone + icon list */
+  .numcol{height:100%;display:flex;}
+  .numcol .num{flex:.9;background:#c4401f;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+  .numcol .num b{font-family:'Fraunces',serif;font-size:clamp(16px,4vw,34px);}
+  .numcol .num span{font-size:clamp(5px,.85vw,9px);opacity:.85;}
+  .numcol .mid{flex:1;background:#fff;display:flex;align-items:center;justify-content:center;}
+  .numcol .mid .ph{width:34%;aspect-ratio:9/16;border:3px solid #1c1a17;border-radius:8%;background:#f4f1ea;}
+  .numcol .list{flex:1.3;background:#fff;display:flex;flex-direction:column;justify-content:center;gap:8%;padding:4% 6%;border-left:1px solid #eee;}
+  .numcol .list div{display:flex;align-items:center;gap:6%;font-size:clamp(5px,.95vw,9.5px);color:#1c1a17;}
+  .numcol .list i{width:12px;height:12px;border-radius:50%;background:#f4d0d0;flex-shrink:0;}
+
+  /* 2x2 colored grid */
+  .g2{height:100%;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;}
+  .g2 .p{position:relative;display:flex;align-items:flex-end;padding:6%;}
+  .g2 .p b{position:relative;color:#fff;font-size:clamp(5px,.85vw,9px);font-weight:700;text-transform:uppercase;}
+
+  /* Coral gradient cover */
+  .coral{background:linear-gradient(160deg,#f4a6a0,#e8827c);height:100%;display:flex;align-items:center;padding:8% 10%;}
+  .coral p{color:#fff;font-family:'Fraunces',serif;font-weight:600;font-size:clamp(11px,2.6vw,22px);line-height:1.3;margin:0;text-wrap:balance;}
+
+  /* Red org chart (delivery team) */
+  .orgred{background:#fff;height:100%;padding:6% 6%;position:relative;}
+  .orgred .lbl{font-size:clamp(7px,1.3vw,13px);color:#1c1a17;}
+  .orgred .node{position:absolute;display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .orgred .node .ph{width:clamp(14px,4.4vw,36px);height:clamp(14px,4.4vw,36px);border-radius:50%;background:#e0335a;}
+  .orgred .node b{color:#c4401f;font-size:clamp(4.5px,.8vw,8px);font-weight:600;}
+  .orgred .node span{color:#9a9484;font-size:clamp(4px,.65vw,6.5px);}
+
+  /* Insany orbit (O que somos / Unimos mundos) */
+  .insorbit{background:#20243a;height:100%;position:relative;overflow:hidden;padding:6%;display:flex;align-items:center;color:#f3ede1;}
+  .insorbit .rings{position:absolute;left:-10%;top:50%;transform:translateY(-50%);width:70%;aspect-ratio:1;}
+  .insorbit .rings .r{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(79,209,165,.35);}
+  .insorbit .rings .r.dot{border-style:dotted;}
+  .insorbit .rings .core{position:absolute;left:50%;top:50%;width:6%;height:6%;background:#4fd1a5;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 12px #4fd1a5;}
+  .insorbit .body{position:relative;flex:1;margin-left:34%;}
+  .insorbit h3{font-family:'Fraunces',serif;font-style:italic;font-weight:500;font-size:clamp(12px,2.6vw,22px);margin:0 0 3%;}
+  .insorbit .tag{color:#4fd1a5;font-size:clamp(5px,.85vw,9px);}
+  .insorbit p{font-size:clamp(5.5px,1vw,10px);line-height:1.5;color:#c9c0ac;margin:3% 0 0;max-width:90%;}
+  .insorbit .pillars{position:relative;flex:1;display:flex;flex-direction:column;gap:6%;}
+  .insorbit .pillars div b{display:block;color:#4fd1a5;font-size:clamp(5.5px,1vw,10px);}
+  .insorbit .pillars div span{display:block;color:#c9c0ac;font-size:clamp(4.5px,.8vw,8px);line-height:1.4;}
+
+  /* Insany index page */
+  .insidx{background:#20243a;height:100%;padding:6%;display:flex;color:#f3ede1;}
+  .insidx .rot{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'Fraunces',serif;font-style:italic;font-size:clamp(9px,1.8vw,15px);border-left:1px solid #4a4a6a;padding-left:4%;margin-right:8%;}
+  .insidx .rows{flex:1;display:flex;flex-direction:column;justify-content:center;gap:6%;}
+  .insidx .rows div{display:flex;gap:5%;align-items:baseline;font-size:clamp(6px,1.1vw,11px);}
+  .insidx .rows b{color:#4fd1a5;font-family:'IBM Plex Mono',monospace;}
+  .insidx .diamond{position:absolute;right:6%;top:14%;width:12%;aspect-ratio:1;background:#4fd1a5;transform:rotate(45deg);opacity:.85;}
+
+  /* Insany tabs + phone mockups (Cases) */
+  .instabs{background:#20243a;height:100%;padding:6%;position:relative;color:#f3ede1;display:flex;align-items:center;}
+  .instabs .navtabs{position:absolute;top:6%;right:6%;display:flex;gap:6%;font-size:clamp(4.5px,.75vw,7.5px);color:#8a8a9a;}
+  .instabs .navtabs span.on{color:#4fd1a5;border-bottom:1px solid #4fd1a5;}
+  .instabs .txt{flex:1;}
+  .instabs h3{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(13px,2.8vw,24px);margin:0 0 4%;}
+  .instabs p{font-size:clamp(5px,.9vw,9px);color:#a8a2c0;line-height:1.5;max-width:80%;margin:0 0 4%;}
+  .instabs .lnk{color:#4fd1a5;font-size:clamp(5px,.85vw,8.5px);}
+  .instabs .phones{flex:1;position:relative;height:70%;}
+  .instabs .ph{position:absolute;width:36%;aspect-ratio:9/16;border:3px solid #3a3f5c;border-radius:10%;background:#2a2e46;}
+  .instabs .ph.p1{right:20%;top:6%;}
+  .instabs .ph.p2{right:0;top:34%;}
+
+  /* Insany isometric mobile */
+  .insiso{background:#2a2540;height:100%;padding:6%;display:flex;align-items:center;color:#f3ede1;}
+  .insiso .txt{flex:1;}
+  .insiso h3{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(11px,2.4vw,20px);margin:0 0 5%;line-height:1.2;}
+  .insiso li{font-size:clamp(5px,.9vw,9px);color:#c9c0ac;list-style:none;padding-left:14px;position:relative;margin-bottom:4%;}
+  .insiso li::before{content:'▪';color:#4fd1a5;position:absolute;left:0;}
+  .insiso .iso{flex:1.1;height:70%;position:relative;}
+  .insiso .iso .plat{position:absolute;width:26%;aspect-ratio:1;background:#3a3560;border:1px solid #55508a;transform:skewY(-14deg) rotate(-8deg);}
+  .insiso .iso .dot{position:absolute;width:5%;aspect-ratio:1;background:#4fd1a5;border-radius:50%;}
+
+  /* Insany simple cover w/ diagonal line */
+  .inscov2{background:#20243a;height:100%;padding:7% 7%;display:flex;flex-direction:column;color:#f3ede1;position:relative;overflow:hidden;}
+  .inscov2 .logo{display:flex;align-items:center;gap:5px;font-size:clamp(6px,1vw,10px);font-weight:700;}
+  .inscov2 .logo svg{width:clamp(8px,1.6vw,16px);height:clamp(8px,1.6vw,16px);}
+  .inscov2 h3{font-family:'Fraunces',serif;font-weight:700;font-size:clamp(18px,4.4vw,36px);line-height:1.02;margin-top:auto;text-wrap:balance;}
+  .inscov2 .line{width:38%;height:1px;background:#4fd1a5;margin:5% 0 3%;transform:rotate(-4deg);transform-origin:left;}
+  .inscov2 .url{font-size:clamp(4.5px,.75vw,7.5px);color:#8f8a9d;}
+
+  /* Insany 3-card feature grid */
+  .insgrid3{background:#2a2540;height:100%;padding:6%;color:#f3ede1;display:flex;flex-direction:column;}
+  .insgrid3 h3{font-family:'Fraunces',serif;font-weight:600;font-size:clamp(11px,2.2vw,19px);margin:0 0 5%;}
+  .insgrid3 .row{flex:1;display:flex;gap:4%;}
+  .insgrid3 .card{flex:1;background:#3a3560;padding:8% 6%;display:flex;flex-direction:column;justify-content:flex-end;}
+  .insgrid3 .card svg{width:22px;height:22px;margin-bottom:20%;}
+  .insgrid3 .card b{font-size:clamp(5px,.95vw,9.5px);display:block;}
+  .insgrid3 .card span{font-size:clamp(4px,.7vw,7px);color:#a8a2c0;line-height:1.4;}
+
+  /* Insany client logo grid */
+  .insclients{background:#20243a;height:100%;padding:6%;display:flex;color:#f3ede1;}
+  .insclients .rot{writing-mode:vertical-rl;transform:rotate(180deg);font-family:'Fraunces',serif;font-style:italic;font-size:clamp(9px,1.8vw,15px);border-left:1px solid #4a4a6a;padding-left:4%;margin-right:8%;}
+  .insclients .grid5{flex:1;display:grid;grid-template-columns:repeat(5,1fr);align-items:center;gap:6% 3%;}
+  .insclients .grid5 span{font-size:clamp(3.5px,.62vw,6.2px);color:#8f8a9d;font-weight:600;text-align:center;}
+
+  /* Neon splash / vinheta */
+  .neon{background:#181414;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4%;}
+  .neon svg{width:22%;filter:drop-shadow(0 0 6px rgba(240,120,90,.55));}
+  .neon span{font-size:clamp(6px,1.2vw,12px);color:#fff;}
+  .neon span b{color:#ff6b4a;}
+
+  footer{padding:40px 6vw 60px;text-align:center;font-size:11px;color:var(--cap-dim);}
+</style>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;0,600;0,700;0,800;1,600;1,700;1,800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap">
+
+<header class="rail">
+  <div class="brand">
+    <span class="mark">Mesa de Luz</span>
+    <span class="tagline">Catálogo de layouts de apresentação</span>
+  </div>
+  <span class="count">40 referências recriadas</span>
+</header>
+
+<main>
+  <div class="intro">
+    <h1>Um garimpo de dois anos de prints salvos, revelado num quadro só.</h1>
+    <p>Cada peça abaixo recria — em código, sem a interface do Instagram por cima — um layout de slide encontrado na sua pasta <b>REFERENCIAS/APRESENTAÇÃO</b>: cores, proporções e composição fiéis ao original fotografado num telão, notebook ou palco.</p>
+    <p class="dim">As 65 imagens da pasta foram revisadas. Muitas repetiam o mesmo molde — o mesmo deck comercial da Insany, as mesmas lives do iFood — então o quadro reúne os 40 layouts realmente distintos entre elas, agrupados por família.</p>
+  </div>
+
+  <!-- GROUP A -->
+  <section class="group">
+    <div class="group-head">
+      <span class="idx">01</span>
+      <h2>Palavra + ilustração — fundo preto</h2>
+      <span class="note">4 variações do mesmo molde, vistas na live @papaidesigner sobre os princípios de produto do iFood</span>
+    </div>
+    <div class="grid">
+      <div class="mount"><div class="frame">
+        <div class="slide tA">
+          <div class="txt"><div class="word">Colaborativo</div><div class="sub">Fazemos o iFood juntos.</div></div>
+          <div class="illus"><svg viewBox="0 0 100 100"><path d="M50 8c-9 0-15 8-15 17 0 6 3 10 3 10s-20 10-20 32v18c0 4 3 7 7 7h50c4 0 7-3 7-7V67c0-22-20-32-20-32s3-4 3-10c0-9-6-17-15-17z" fill="#e0335a"/><circle cx="42" cy="30" r="4" fill="#fff"/><path d="M18 55c-6 4-10 10-10 18v10c0 3 2 5 5 5h10" stroke="#f4a6bd" stroke-width="5" fill="none" stroke-linecap="round"/></svg></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·02</span><span class="src">papaidesigner · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide tA">
+          <div class="txt"><div class="word">Consistente</div><div class="sub">Preparamos uma experiência coerente e funcional.</div></div>
+          <div class="illus"><svg viewBox="0 0 100 100"><path d="M50 10c-8 0-14 7-14 15 0 5 2 8 2 8s-4 3-4 3l30 46c2-3 8-13 8-24 0-15-8-24-8-24s2-3 2-8c0-8-6-16-16-16z" fill="#8a2be8"/><circle cx="44" cy="26" r="4" fill="#fff"/></svg></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·03</span><span class="src">papaidesigner · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide tA">
+          <div class="txt"><div class="word">Simples</div><div class="sub">Beleza, gosto e conforto.</div></div>
+          <div class="illus"><svg viewBox="0 0 100 100"><ellipse cx="55" cy="30" rx="14" ry="16" fill="#e83a9c"/><path d="M35 55c0 20 10 32 10 32h20s12-10 12-30c0-8-6-14-14-14H49c-8 0-14 5-14 12z" fill="#f472b6"/></svg></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·04</span><span class="src">papaidesigner · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide tA">
+          <div class="txt"><div class="word">Acessível</div><div class="sub">O iFood é pra qualquer forma.</div></div>
+          <div class="illus"><svg viewBox="0 0 100 100"><path d="M52 8c-8 0-14 6-14 14s6 14 14 14 14-6 14-14S60 8 52 8z" fill="#e0335a"/><path d="M30 78c6-20 14-32 22-32s16 12 22 32" stroke="#f4a6bd" stroke-width="8" fill="none" stroke-linecap="round"/></svg></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·05</span><span class="src">papaidesigner · iFood</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP B -->
+  <section class="group">
+    <div class="group-head"><span class="idx">02</span><h2>Painel dividido</h2><span class="note">título de um lado, contexto/hierarquia do outro</span></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide split">
+          <div class="half" style="background:linear-gradient(160deg,#e8792a,#d0568f 60%,#c2508f);">
+            <div style="font-family:'Fraunces',serif;font-weight:700;color:#fff;font-size:clamp(14px,3.4vw,28px);line-height:1.15;">água malte<br>lúpulo<br>e design</div>
+          </div>
+          <div class="half" style="background:#cfe4ee;align-items:center;">
+            <div style="width:clamp(30px,9vw,64px);height:clamp(30px,9vw,64px);border-radius:50%;background:#8a6a4a;margin-bottom:8%;"></div>
+            <div style="font-size:clamp(6px,1vw,10px);color:#1c1a17;font-weight:700;">camila schiabel</div>
+            <div style="font-size:clamp(5px,.8vw,8.5px);color:#3a5a6a;">product designer</div>
+            <div style="font-size:clamp(6px,1.2vw,12px);color:#1c1a17;font-weight:800;margin-top:6%;">ABInBev</div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·01</span><span class="src">Castelo Creative Space</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide split">
+          <div class="half" style="background:#fff;">
+            <div style="display:inline-block;background:#e8792a;color:#fff;font-size:clamp(5px,.85vw,9px);padding:3% 6%;margin-bottom:6%;width:fit-content;">Time de produto</div>
+          </div>
+          <div class="half" style="background:#16294a;gap:8%;">
+            <div style="color:#fff;font-size:clamp(6px,1.1vw,11px);border-bottom:1px solid rgba(255,255,255,.2);padding-bottom:8%;">Time de projeto</div>
+            <div style="color:#fff;font-size:clamp(6px,1.1vw,11px);border-bottom:1px solid rgba(255,255,255,.2);padding-bottom:8%;">Time de design</div>
+            <div style="color:#fff;font-size:clamp(6px,1.1vw,11px);">Time de desenvolvimento</div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·09</span><span class="src">meetupdesigncampinas</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP C -->
+  <section class="group">
+    <div class="group-head"><span class="idx">03</span><h2>Capa institucional — molde Insany</h2><span class="note">mesmo template reaproveitado em pelo menos 2 docs</span></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide insany">
+          <div class="top"><div class="logo"><svg viewBox="0 0 20 20"><path d="M10 2 18 18H2z" fill="none" stroke="#4fd1a5" stroke-width="2"/></svg>INSANY</div><span>mód 2019</span></div>
+          <div class="ring"><div class="core">🚩</div></div>
+          <div class="title">Regras<br>do JOGO</div>
+          <div class="subtitle">Entenda como seu projeto será desenvolvido pelo nosso time.</div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·17</span><span class="src">arquivo próprio · Insany</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide insany">
+          <div class="top"><div class="logo"><svg viewBox="0 0 20 20"><path d="M10 2 18 18H2z" fill="none" stroke="#4fd1a5" stroke-width="2"/></svg>INSANY</div><span>nov 2019</span></div>
+          <div class="ring"><div class="core">$</div></div>
+          <div class="title">ORÇA<br>MENTO</div>
+          <div class="subtitle">Interface Web + Front-end</div>
+          <div class="meta">
+            <div><b>Cliente</b><span>Rovitex</span></div>
+            <div><b>Data</b><span>10/10/2019</span></div>
+            <div><b>Responsável</b><span>J. Santana</span></div>
+            <div><b>Validade</b><span>10/11/2019</span></div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·19</span><span class="src">arquivo próprio · Insany</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP D -->
+  <section class="group">
+    <div class="group-head"><span class="idx">04</span><h2>Split diagonal</h2><span class="note">pergunta de um lado, resposta em bloco de cor do outro</span></div>
+    <div class="grid">
+      <div class="mount"><div class="frame">
+        <div class="slide diag">
+          <div class="left"><div style="font-family:'Fraunces',serif;font-weight:600;color:#1c1a17;font-size:clamp(14px,3.6vw,30px);">COMO?</div></div>
+          <div class="right"><div style="font-family:'Fraunces',serif;font-weight:800;color:#fff;font-size:clamp(14px,3.6vw,30px);line-height:1;">EDU<br>CAN<br>DO!</div></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·11</span><span class="src">Sapato Laranja</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide quote">
+          <div class="who"><div class="avatar"></div><span>Maurício Vargas</span></div>
+          <div class="txt">As empresas devem ser feitas por pessoas... sem mimimi!</div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·10</span><span class="src">Reclame Aqui</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP E -->
+  <section class="group">
+    <div class="group-head"><span class="idx">05</span><h2>Conteúdo &amp; dados</h2><span class="note">quando o slide carrega uma tabela, grid ou dashboard</span></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide pgrid">
+          <div class="photos"><div style="grid-column:1/3;grid-row:1/3;"></div><div></div><div></div><div></div><div></div></div>
+          <div class="info"><h3>Princípios</h3><p>Com o time de tech inteiro, definimos os princípios de produto.</p></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·06</span><span class="src">papaidesigner · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide price">
+          <div class="col"><div>Cliente difícil</div><div>Competição acirrada</div><div>Forte / precisa de fôlego</div></div>
+          <div class="rows">
+            <div class="row hi">R$ 4.250 — Valor de mercado</div>
+            <div class="row">R$ 4.000</div><div class="row">R$ 3.800</div>
+            <div class="row hi">R$ 3.500 — Budget do cliente</div>
+            <div class="row">R$ 3.250</div><div class="row">R$ 3.000</div>
+            <div class="row hi">R$ 2.300 — Custo de produção</div>
+          </div>
+          <div class="col right"><div>Referência</div><div>Ocupado, mas preço bom</div><div>Tentado a crescer</div></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·08</span><span class="src">uilab</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide dash">
+          <div class="left"><span class="lbl">Beta e lançamento</span><p>Técnicas pra testar o design: <b>projeção de dados</b> e ferramentas incrementais.</p></div>
+          <div class="right">
+            <div class="card"><span class="t">User trends</span><svg viewBox="0 0 40 16"><polyline points="0,10 8,4 16,12 24,3 32,9 40,2" fill="none" stroke="#c4401f" stroke-width="1.5"/></svg></div>
+            <div class="card"><span class="t">Top users</span><svg viewBox="0 0 40 16"><rect y="2" width="26" height="2" fill="#d8cdb0"/><rect y="7" width="18" height="2" fill="#d8cdb0"/><rect y="12" width="22" height="2" fill="#d8cdb0"/></svg></div>
+            <div class="card"><span class="t">Rage grade</span><svg viewBox="0 0 40 16"><circle cx="20" cy="8" r="6" fill="none" stroke="#c4401f" stroke-width="1.5"/></svg></div>
+            <div class="card"><span class="t">Error clicks</span><svg viewBox="0 0 40 16"><rect y="10" width="40" height="3" fill="#c4401f"/></svg></div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·16</span><span class="src">FullStory talk</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP F -->
+  <section class="group">
+    <div class="group-head"><span class="idx">06</span><h2>Chamada &amp; time</h2></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide cta">
+          <h3>Temos vagas!</h3>
+          <div class="em">isabel.araujo@ifood.com.br</div>
+          <div class="em">raphaella.quarterone@ifood.com.br</div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·07</span><span class="src">papaidesigner · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide org">
+          <div class="node" style="left:8%;top:30%;"><div class="ph"></div><b>Guilherme</b><span>UI Designer</span></div>
+          <div class="node" style="left:24%;top:12%;"><div class="ph"></div><b>Felipe</b><span>UI Designer</span></div>
+          <div class="node" style="left:38%;top:38%;"><div class="ph"></div><b>Gabi</b><span>Gerente de Projeto</span></div>
+          <div class="node" style="left:44%;top:6%;"><div class="ph"></div><b>Amanda</b><span>Front-end</span></div>
+          <div class="node" style="left:60%;top:22%;"><div class="ph"></div><b>Angélica</b><span>UI Designer</span></div>
+          <div class="node" style="left:30%;top:64%;"><div class="ph"></div><b>Léo</b><span>Front-end</span></div>
+          <div class="node" style="left:52%;top:70%;"><div class="ph"></div><b>Will</b><span>Front-end</span></div>
+          <div class="node" style="left:70%;top:52%;"><div class="ph"></div><b>Gilberto</b><span>Fundador</span></div>
+          <div class="node" style="left:82%;top:28%;"><div class="ph"></div><b>Carol</b><span>Financeiro</span></div>
+          <div style="position:absolute;left:6%;top:8%;color:#4fd1a5;font-family:'Fraunces',serif;font-style:italic;font-size:clamp(9px,1.6vw,14px);">Insaners.</div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·12</span><span class="src">arquivo próprio · Insany</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP G -->
+  <section class="group">
+    <div class="group-head"><span class="idx">07</span><h2>Palco &amp; palestrantes</h2></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide stage">
+          <svg class="tri" viewBox="0 0 100 56" preserveAspectRatio="none"><polygon points="0,0 60,0 30,56 0,56" fill="#5a2a8a"/><polygon points="60,0 100,0 100,56 30,56" fill="#8a2be8"/><polygon points="70,0 100,0 100,22" fill="#f4c430"/><polygon points="0,30 20,0 0,0" fill="#e0335a"/></svg>
+          <div class="content">
+            <div class="tag"><span>#DEXCONF19</span><span>#PRODUTO</span></div>
+            <h3>Os desafios e hacks para trabalharmos felizes em equipes de produto</h3>
+            <div class="speakers">
+              <div class="sp"><div class="ph"></div><span>Vitor Guerra</span></div>
+              <div class="sp"><div class="ph"></div><span>Bianca F.</span></div>
+              <div class="sp"><div class="ph"></div><span>Convidada</span></div>
+            </div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·14</span><span class="src">DEX 2019</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide ycard">
+          <div class="inner">
+            <div class="badges"><span>#realista</span><span>#rápido</span><span>#eficaz</span><span>#tendência</span></div>
+            <div class="line">"a gente precisa ir pra casa logo, porque saímos tarde do trabalho"</div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·13</span><span class="src">BEAR U · curso online</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP H -->
+  <section class="group">
+    <div class="group-head"><span class="idx">08</span><h2>Título composto com "+"</h2><span class="note">fundo lilás, faixas tracejadas de fundo, mesmo molde em duas ordens</span></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide plus">
+          <div class="stripes"></div>
+          <div class="body"><h3>Produto <b>+</b> SquadCraft</h3><div class="sub">(mais velocidade e consistência)</div></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·20</span><span class="src">papaidesigner · live</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide plus">
+          <div class="stripes"></div>
+          <div class="body"><h3>SquadCraft <b>+</b> Produto</h3></div>
+          <div class="list"><div>Product designers</div><div>Visual designers</div><div>Ilustradores</div><div>Researchers</div><div>Content designers</div></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·20b</span><span class="src">papaidesigner · live</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP I -->
+  <section class="group">
+    <div class="group-head"><span class="idx">09</span><h2>iFood — afirmação &amp; citação</h2><span class="note">frases curtas de conteúdo/UX writing, com e sem apoio visual</span></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide stmt"><p>Ajudar os usuários a completarem sua jornada</p></div>
+      </div><div class="cap"><span class="ref">REF·38</span><span class="src">calderaricaio · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide bquote">
+          <div class="top"><p>"Quando você quer expressar o que seu usuário pensa, é melhor usar as palavras dele."</p></div>
+          <div class="bot"><span>Kinneret Yifrah</span></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·37</span><span class="src">calderaricaio · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide photoquote">
+          <div class="tabs"><span class="on">Clareza</span><span>Empatia</span><span>Consistência</span><span>Evolução</span></div>
+          <div class="photo"></div>
+          <div class="card"><p>"Quando você quer expressar o que seu usuário pensa, é melhor usar as palavras dele."</p><b>Kinneret Yifrah</b></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·34</span><span class="src">calderaricaio · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide split">
+          <div class="half" style="background:#fff;">
+            <div style="font-family:'Fraunces',serif;font-weight:700;color:#1c1a17;font-size:clamp(11px,2.4vw,20px);line-height:1.2;">Eat your<br>own dog food</div>
+            <div style="width:26%;height:2px;background:#c4401f;margin:5% 0;"></div>
+            <div style="font-size:clamp(6px,1.1vw,11px);color:#5c5748;">Let's bike!</div>
+          </div>
+          <div class="half" style="background:#fff;align-items:center;justify-content:center;">
+            <div style="width:60%;aspect-ratio:1;border-radius:50%;background:linear-gradient(160deg,#e0335a,#c4401f);"></div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·25</span><span class="src">calderaricaio · iFood</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP J -->
+  <section class="group">
+    <div class="group-head"><span class="idx">10</span><h2>iFood — números &amp; grade</h2><span class="note">quando o dado ou o time viram o protagonista do slide</span></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide statmock">
+          <div class="phone"></div>
+          <div class="stat" style="left:10%;top:16%;"><b>+100k</b><span>usuárias ativas</span></div>
+          <div class="stat" style="right:10%;top:16%;"><b>85%</b><span>engajamento</span></div>
+          <div class="stat" style="left:10%;bottom:16%;"><b>+50k</b><span>novos serviços</span></div>
+          <div class="stat" style="right:10%;bottom:16%;"><b>40%</b><span>retenção</span></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·22</span><span class="src">post LinkedIn</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide numcol">
+          <div class="num"><b>160K</b><span>parceiros cadastrados</span></div>
+          <div class="mid"><div class="ph"></div></div>
+          <div class="list"><div><i></i>Modais — moto, bike e patinete</div><div><i></i>+66 mil entregadores ativos</div><div><i></i>Autonomia de horário</div></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·27</span><span class="src">calderaricaio · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide g2">
+          <div class="p" style="background:#8a2be8;"><b>Let's bike</b></div>
+          <div class="p" style="background:#e0335a;"><b>Experimenta iFood</b></div>
+          <div class="p" style="background:#26c6c6;"><b>Carona</b></div>
+          <div class="p" style="background:#f4f1ea;"><b style="color:#1c1a17;">Meu restaurante</b></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·28</span><span class="src">papaidesigner · live</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide orgred">
+          <div class="lbl">Time de Logística</div>
+          <div class="node" style="left:44%;top:22%;"><div class="ph"></div><b>Lírel</b><span>Lead</span></div>
+          <div class="node" style="left:16%;top:52%;"><div class="ph"></div><b>Meire</b><span>Product Designer</span></div>
+          <div class="node" style="left:42%;top:52%;"><div class="ph"></div><b>Dulce</b><span>Product Designer</span></div>
+          <div class="node" style="left:68%;top:52%;"><div class="ph"></div><b>Érika</b><span>Product Designer</span></div>
+          <div class="node" style="left:36%;top:78%;"><div class="ph"></div><b>Mariana</b><span>Content</span></div>
+          <div class="node" style="left:50%;top:78%;"><div class="ph"></div><b>Lucas</b><span>Research</span></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·23</span><span class="src">calderaricaio · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide coral"><p>Escrevendo para entregadores: o poder do conteúdo no delivery</p></div>
+      </div><div class="cap"><span class="ref">REF·26</span><span class="src">calderaricaio · iFood</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide docmock">
+          <div class="txt"><h3>Guia de conteúdo iFood</h3><p>Um guia estratégico de conteúdo, com tom e voz, taxonomia e padronizações, garantindo que informação que chega até o usuário seja simples e tenha clareza total.</p></div>
+          <div class="win"><div class="bar"><span></span><span></span><span></span></div><div class="body"><div class="toc"><div></div><div></div><div></div><div></div><div></div></div><div class="lines"><div></div><div></div><div></div><div></div><div></div><div></div></div></div></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·39</span><span class="src">calderaricaio · iFood</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP K -->
+  <section class="group">
+    <div class="group-head"><span class="idx">11</span><h2>Site institucional</h2><span class="note">fora do universo de slides, mas mesmo garimpo — foto full-bleed + card com CTA</span></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide photocta">
+          <div class="card"><p>Mais importante do que as nossas tecnologias, são as nossas pessoas</p><small>Se você tem uma mente curiosa e sedenta por uma oportunidade para fazer a diferença, queremos te conhecer!</small><button>Veja nossas vagas abertas</button></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·36</span><span class="src">Acesso Digital · site</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide neon">
+          <svg viewBox="0 0 100 90"><path d="M50 8 90 78H10z" fill="none" stroke="#ff6b4a" stroke-width="4"/><circle cx="42" cy="42" r="6" fill="#ff9d6a"/><circle cx="58" cy="52" r="5" fill="#4ade9d"/><path d="M32 78c0 8 4 10 6 10M42 78c0 10 5 14 8 14M58 78c0-8 6-10 8-10" stroke="#4ac9de" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+          <span>iFood <b>Design</b></span>
+        </div>
+      </div><div class="cap"><span class="ref">REF·40</span><span class="src">calderaricaio · iFood</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP L -->
+  <section class="group">
+    <div class="group-head"><span class="idx">12</span><h2>Insany — apresentação comercial 2019</h2><span class="note">um deck inteiro reaparece nos prints; oito telas distintas dele até aqui</span></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide inscov2">
+          <div class="logo"><svg viewBox="0 0 20 20"><path d="M10 2 18 18H2z" fill="none" stroke="#4fd1a5" stroke-width="2"/></svg>INSANY</div>
+          <h3>Apresentação<br>comercial<br>2019</h3>
+          <div class="line"></div>
+          <div class="url">www.insanydesign.com</div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·33</span><span class="src">arquivo próprio · Insany</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide insidx">
+          <div class="rot">Índice.</div>
+          <div class="rows">
+            <div><b>01.</b>O que fazemos</div><div><b>02.</b>Interface web</div><div><b>03.</b>Interface mobile</div>
+            <div><b>04.</b>Front-end</div><div><b>05.</b>Como fazemos</div><div><b>06.</b>Cases</div><div><b>07.</b>Contato</div>
+          </div>
+          <div class="diamond"></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·29</span><span class="src">arquivo próprio · Insany</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide insorbit">
+          <div class="rings"><div class="r" style="width:100%;height:100%;"></div><div class="r dot" style="width:78%;height:78%;top:11%;left:11%;"></div><div class="core"></div></div>
+          <div class="body"><h3>O que somos.</h3><div class="tag">#goinsany</div><p>Especialistas em interfaces de tirar o fôlego. Um estúdio criativo focado em design de interfaces que resolvem problemas de empresas por meio de soluções criativas.</p></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·24</span><span class="src">arquivo próprio · Insany</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide insgrid3">
+          <h3>O que fazemos</h3>
+          <div class="row">
+            <div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="#4fd1a5" stroke-width="1.5"><rect x="2" y="4" width="14" height="10" rx="1"/><rect x="13" y="12" width="9" height="7" rx="1"/></svg><b>Design de interfaces Web</b><span>Websites · e-commerce · Sistemas</span></div>
+            <div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="#4fd1a5" stroke-width="1.5"><rect x="7" y="2" width="8" height="16" rx="1"/><circle cx="17" cy="15" r="4"/></svg><b>Design de interfaces Mobile</b><span>Android e iOS</span></div>
+            <div class="card"><svg viewBox="0 0 24 24" fill="none" stroke="#4fd1a5" stroke-width="1.5"><rect x="2" y="4" width="20" height="14" rx="1"/><path d="M6 20h4"/></svg><b>Desenvolvimento Front-end</b><span>JS · React · Wordpress</span></div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·35</span><span class="src">arquivo próprio · Insany</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide insiso">
+          <div class="txt"><h3>Design de interfaces Mobile</h3><ul><li>Aplicativos — iOS | Android</li><li>Navegação responsiva</li></ul></div>
+          <div class="iso">
+            <div class="plat" style="left:8%;top:20%;"></div><div class="plat" style="left:36%;top:6%;"></div><div class="plat" style="left:30%;top:44%;"></div>
+            <div class="dot" style="left:14%;top:56%;"></div><div class="dot" style="left:60%;top:16%;"></div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·32</span><span class="src">arquivo próprio · Insany</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide instabs">
+          <div class="navtabs"><span>Web</span><span class="on">Mobile</span><span>Dash</span></div>
+          <div class="txt"><h3>Cases.</h3><p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Convallis morbi faucibus bibendum mauris.</p><div class="lnk">read more →</div></div>
+          <div class="phones"><div class="ph p1"></div><div class="ph p2"></div></div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·30</span><span class="src">arquivo próprio · Insany</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide insorbit">
+          <div class="rings"><div class="r dot" style="width:96%;height:96%;top:2%;left:2%;"></div><div class="r" style="width:70%;height:70%;top:15%;left:15%;"></div><div class="core"></div></div>
+          <div class="body"><h3>Unimos mundos.</h3><div class="tag">os 4 pilares</div></div>
+          <div class="pillars">
+            <div><b>Tecnologia</b><span>Buscando sempre as melhores tecnologias</span></div>
+            <div><b>Design</b><span>Respiramos design, sempre o melhor</span></div>
+            <div><b>Negócio</b><span>Entregamos as regras de negócio</span></div>
+            <div><b>UX</b><span>Unimos tudo pela melhor experiência</span></div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·41</span><span class="src">arquivo próprio · Insany</span></div></div>
+
+      <div class="mount"><div class="frame">
+        <div class="slide insclients">
+          <div class="rot">Clientes.</div>
+          <div class="grid5">
+            <span>petlove</span><span>UNIFENAS</span><span>RockFunnels</span><span>Nexaas</span><span>aprova rápido</span>
+            <span>Maplink</span><span>corebiz</span><span>navex</span><span>meetime</span><span>nuvem hospedagem</span>
+            <span>Deskfy</span><span>insur growth</span><span>idwall</span><span>studio360</span><span>digio</span>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·42</span><span class="src">arquivo próprio · Insany</span></div></div>
+    </div>
+  </section>
+
+  <!-- GROUP M -->
+  <section class="group">
+    <div class="group-head"><span class="idx">13</span><h2>Processo &amp; passo a passo</h2></div>
+    <div class="grid wide">
+      <div class="mount"><div class="frame">
+        <div class="slide split">
+          <div class="half" style="background:#fff;"><div style="font-family:'Fraunces',serif;font-weight:600;color:#1c1a17;font-size:clamp(13px,2.8vw,24px);">Processo</div></div>
+          <div class="half" style="background:#fff;gap:10%;">
+            <div style="font-size:clamp(5.5px,1vw,10px);color:#1c1a17;"><b style="color:#c4401f;">●</b> Análise dos termos atuais</div>
+            <div style="font-size:clamp(5.5px,1vw,10px);color:#1c1a17;"><b style="color:#c4401f;">●</b> Card sorting e co-criação com usuários</div>
+            <div style="font-size:clamp(5.5px,1vw,10px);color:#1c1a17;"><b style="color:#c4401f;">●</b> Teste final de usabilidade</div>
+          </div>
+        </div>
+      </div><div class="cap"><span class="ref">REF·31</span><span class="src">calderaricaio · iFood</span></div></div>
+    </div>
+  </section>
+</main>
+
+<footer>Mesa de Luz — recriação de layout a partir de prints salvos em REFERENCIAS/APRESENTAÇÃO. Nenhuma imagem original embutida.</footer>
